@@ -1,0 +1,249 @@
+/*
+PUBG RECOIL CONTROL v2.0 - Cronus Zen
+Sistema completo de control de retroceso con menú interactivo
+Compatible con Xbox One/Series X|S
+
+INSTRUCCIONES:
+1. Abre Cronus Zen
+2. Ve a: Compiler > Open Script
+3. Carga este archivo (PUBG_Recoil_Control.gpc)
+4. Conecta tu control Xbox
+5. Compila el script (Compile)
+6. Carga en la consola (Load to Console)
+7. Presiona START en el menú del script
+*/
+
+#pragma ENFORCE_EXCLUSIVITY OFF
+#include <includes/PUBG_Database.gpc>
+
+// ============================================
+// VARIABLES GLOBALES
+// ============================================
+int SCRIPT_ACTIVE = 0;
+int MENU_OPEN = 0;
+int CURRENT_WEAPON_INDEX = 0;
+int CURRENT_GRIP_INDEX = 0;
+int CURRENT_STOCK_INDEX = 0;
+int CURRENT_MUZZLE_INDEX = 0;
+
+// Variables de control
+int AIM_ACTIVE = 0;
+int FIRE_ACTIVE = 0;
+
+// ============================================
+// MAPEO DE CONTROLES XBOX
+// ============================================
+#define TRIGGER_AIM      XB1_LT    // Gatillo izquierdo (ADS)
+#define TRIGGER_FIRE     XB1_RT    // Gatillo derecho (Disparar)
+#define MENU_OPEN_BTN    XB1_START // START para abrir menú
+#define MENU_UP          XB1_UP    // D-Pad arriba
+#define MENU_DOWN        XB1_DOWN  // D-Pad abajo
+#define MENU_LEFT        XB1_LEFT  // D-Pad izquierda
+#define MENU_RIGHT       XB1_RIGHT // D-Pad derecha
+#define MENU_SELECT      XB1_A     // A para seleccionar
+#define MENU_BACK        XB1_B     // B para atrás
+#define TOGGLE_ACTIVE    XB1_Y     // Y para activar/desactivar
+
+// ============================================
+// MAIN LOOP
+// ============================================
+main {
+    if(event_release(MENU_OPEN_BTN)) {
+        MENU_OPEN = !MENU_OPEN;
+        run_menu();
+    }
+    
+    if(SCRIPT_ACTIVE && !MENU_OPEN) {
+        run_recoil_compensation();
+    }
+    
+    // Indicador de estado
+    if(event_press(TOGGLE_ACTIVE)) {
+        SCRIPT_ACTIVE = !SCRIPT_ACTIVE;
+    }
+}
+
+// ============================================
+// SISTEMA DE MENÚ
+// ============================================
+function run_menu() {
+    int menu_state = 0;
+    int selection = 0;
+    
+    while(MENU_OPEN) {
+        clear_screen();
+        printf("╔════════════════════════════════════════╗\n");
+        printf("║   PUBG RECOIL CONTROL - CRONUS ZEN    ║\n");
+        printf("╚════════════════════════════════════════╝\n\n");
+        
+        printf("ESTADO: %s\n", SCRIPT_ACTIVE ? "✓ ACTIVO" : "✗ INACTIVO");
+        printf("(Presiona Y para activar/desactivar)\n\n");
+        
+        if(menu_state == 0) {
+            display_weapon_menu();
+            handle_weapon_selection();
+        }
+        else if(menu_state == 1) {
+            display_attachment_menu();
+            handle_attachment_selection();
+        }
+        else if(menu_state == 2) {
+            display_current_profile();
+        }
+        
+        if(event_press(MENU_BACK)) {
+            MENU_OPEN = 0;
+        }
+        
+        wait(50);
+    }
+}
+
+// ============================================
+// MENÚ DE SELECCIÓN DE ARMAS
+// ============================================
+function display_weapon_menu() {
+    printf("┌─ SELECCIONAR ARMA ─────────────────────┐\n");
+    printf("│ (Usa ↑/↓ para navegar, A para elegir)  │\n");
+    printf("└────────────────────────────────────────┘\n\n");
+    
+    for(int i = 0; i < WEAPON_COUNT; i++) {
+        if(i == CURRENT_WEAPON_INDEX) {
+            printf("▶ [%s]\n", WEAPONS[i].name);
+        } else {
+            printf("  %s\n", WEAPONS[i].name);
+        }
+    }
+    
+    printf("\nPresiona X para ir a ACCESORIOS\n");
+}
+
+function handle_weapon_selection() {
+    if(event_press(MENU_UP)) {
+        CURRENT_WEAPON_INDEX--;
+        if(CURRENT_WEAPON_INDEX < 0) {
+            CURRENT_WEAPON_INDEX = WEAPON_COUNT - 1;
+        }
+    }
+    
+    if(event_press(MENU_DOWN)) {
+        CURRENT_WEAPON_INDEX++;
+        if(CURRENT_WEAPON_INDEX >= WEAPON_COUNT) {
+            CURRENT_WEAPON_INDEX = 0;
+        }
+    }
+}
+
+// ============================================
+// MENÚ DE SELECCIÓN DE ACCESORIOS
+// ============================================
+function display_attachment_menu() {
+    printf("┌─ SELECCIONAR ACCESORIOS ───────────────┐\n");
+    printf("│ (Usa ↑/↓ para navegar, ←/→ para cambiar)│\n");
+    printf("└────────────────────────────────────────┘\n\n");
+    
+    int weapon_idx = CURRENT_WEAPON_INDEX;
+    
+    printf("ARMA: %s\n\n", WEAPONS[weapon_idx].name);
+    
+    printf("EMPUÑADURA:\n");
+    printf("  Opciones: None | Half Grip | Vertical Grip | Angled Grip\n");
+    printf("  ▶ [%s]\n\n", GRIP_OPTIONS[CURRENT_GRIP_INDEX]);
+    
+    printf("CULATA:\n");
+    printf("  Opciones: None | Light Stock | Heavy Stock\n");
+    printf("  ▶ [%s]\n\n", STOCK_OPTIONS[CURRENT_STOCK_INDEX]);
+    
+    printf("CAÑÓN:\n");
+    printf("  Opciones: None | Compensator | Suppressor | Flash Hider\n");
+    printf("  ▶ [%s]\n\n", MUZZLE_OPTIONS[CURRENT_MUZZLE_INDEX]);
+    
+    printf("Presiona X para GUARDAR PERFIL\n");
+}
+
+function handle_attachment_selection() {
+    if(event_press(MENU_UP)) {
+        // Navega entre tipos de accesorios
+    }
+    
+    if(event_press(MENU_LEFT)) {
+        // Cambia opción anterior
+        CURRENT_GRIP_INDEX--;
+        if(CURRENT_GRIP_INDEX < 0) {
+            CURRENT_GRIP_INDEX = 3;
+        }
+    }
+    
+    if(event_press(MENU_RIGHT)) {
+        // Cambia siguiente opción
+        CURRENT_GRIP_INDEX++;
+        if(CURRENT_GRIP_INDEX > 3) {
+            CURRENT_GRIP_INDEX = 0;
+        }
+    }
+}
+
+// ============================================
+// MOSTRAR PERFIL ACTUAL
+// ============================================
+function display_current_profile() {
+    printf("┌─ PERFIL ACTUAL ────────────────────────┐\n");
+    printf("│ (Presiona X para volver a editar)      │\n");
+    printf("└────────────────────────────────────────┘\n\n");
+    
+    int weapon_idx = CURRENT_WEAPON_INDEX;
+    int total_recoil = WEAPONS[weapon_idx].base_recoil_vertical;
+    
+    printf("ARMA: %s\n", WEAPONS[weapon_idx].name);
+    printf("  Retroceso base: %d\n\n", WEAPONS[weapon_idx].base_recoil_vertical);
+    
+    printf("ACCESORIOS:\n");
+    printf("  Empuñadura: %s (%+d)\n", GRIP_OPTIONS[CURRENT_GRIP_INDEX], GRIP_VALUES[CURRENT_GRIP_INDEX]);
+    printf("  Culata: %s (%+d)\n", STOCK_OPTIONS[CURRENT_STOCK_INDEX], STOCK_VALUES[CURRENT_STOCK_INDEX]);
+    printf("  Cañón: %s (%+d)\n\n", MUZZLE_OPTIONS[CURRENT_MUZZLE_INDEX], MUZZLE_VALUES[CURRENT_MUZZLE_INDEX]);
+    
+    int final_recoil = total_recoil + GRIP_VALUES[CURRENT_GRIP_INDEX] + 
+                       STOCK_VALUES[CURRENT_STOCK_INDEX] + MUZZLE_VALUES[CURRENT_MUZZLE_INDEX];
+    
+    printf("RETROCESO FINAL: %d\n", final_recoil);
+    printf("STATUS: %s\n", SCRIPT_ACTIVE ? "✓ ACTIVO" : "✗ INACTIVO");
+}
+
+// ============================================
+// SISTEMA DE COMPENSACIÓN DE RETROCESO
+// ============================================
+function run_recoil_compensation() {
+    int weapon_idx = CURRENT_WEAPON_INDEX;
+    
+    // Obtener valores de retroceso
+    int vertical_recoil = WEAPONS[weapon_idx].base_recoil_vertical;
+    int horizontal_recoil = WEAPONS[weapon_idx].base_recoil_horizontal;
+    
+    // Aplicar modificadores por accesorios
+    vertical_recoil += GRIP_VALUES[CURRENT_GRIP_INDEX];
+    vertical_recoil += STOCK_VALUES[CURRENT_STOCK_INDEX];
+    vertical_recoil += MUZZLE_VALUES[CURRENT_MUZZLE_INDEX];
+    
+    horizontal_recoil += GRIP_HORIZONTAL[CURRENT_GRIP_INDEX];
+    horizontal_recoil += MUZZLE_HORIZONTAL[CURRENT_MUZZLE_INDEX];
+    
+    // Aplicar compensación solo si está apuntando Y disparando
+    if(get_val(TRIGGER_AIM) > 50 && get_val(TRIGGER_FIRE) > 50) {
+        // Compensación Vertical (restar para tirar hacia abajo)
+        set_val(XB1_RY, get_val(XB1_RY) - vertical_recoil);
+        
+        // Compensación Horizontal
+        if(horizontal_recoil > 0) {
+            set_val(XB1_RX, get_val(XB1_RX) - horizontal_recoil);
+        } else if(horizontal_recoil < 0) {
+            set_val(XB1_RX, get_val(XB1_RX) + abs(horizontal_recoil));
+        }
+    }
+}
+
+// ============================================
+// FUNCIÓN AUXILIAR
+// ============================================
+function clear_screen() {
+    printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+}
